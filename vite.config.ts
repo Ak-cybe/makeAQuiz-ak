@@ -4,7 +4,7 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: "/quizmaster-ak/",
+  base: "/makeAQuiz-ak/",
   server: {
     host: "::",
     port: 8080,

@@ -48,10 +48,10 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/Ak-cybe/quizmaster-ak.git
+git clone https://github.com/Ak-cybe/makeAQuiz-ak.git
 
 # Navigate to project directory
-cd quizmaster-ak
+cd makeAQuiz-ak
 
 # Install dependencies
 npm install
@@ -75,7 +75,7 @@ Output will be in the `dist/` directory, ready for deployment.
 ## 📁 Project Structure
 
 ```
-quizmaster-ak/
+makeAQuiz-ak/
 ├── public/              # Static assets
 ├── src/
 │   ├── components/      # Reusable UI components
