@@ -115,7 +115,18 @@ export function QuizCreator({ onSaveQuiz, onClose }: QuizCreatorProps) {
       }
     }
 
-    return questions;
+    // Deduplicate by question text (case-insensitive)
+    const seenTexts = new Set<string>();
+    const uniqueQuestions: QuizQuestion[] = [];
+    for (const questionItem of questions) {
+      const normalizedText = questionItem.question.trim().toLowerCase();
+      if (!seenTexts.has(normalizedText)) {
+        seenTexts.add(normalizedText);
+        uniqueQuestions.push({ ...questionItem, id: uniqueQuestions.length + 1 });
+      }
+    }
+
+    return uniqueQuestions;
   };
 
   const handleBulkInputChange = (text: string) => {
@@ -136,8 +147,8 @@ export function QuizCreator({ onSaveQuiz, onClose }: QuizCreatorProps) {
     }
   };
 
-  // Determine which questions to save — prefer CSV if available, else text paste
-  const activeQuestions = csvQuestions.length > 0 ? csvQuestions : parsedQuestions;
+  // Determine which questions to save — based on active tab
+  const activeQuestions = activeTab === "csv" && csvQuestions.length > 0 ? csvQuestions : parsedQuestions;
   const activeQuestionCount = activeQuestions.length;
 
   const handleSave = () => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 interface UseTimerProps {
   initialTime: number;
@@ -8,21 +8,27 @@ interface UseTimerProps {
 
 export function useTimer({ initialTime, onTimeUp, isActive }: UseTimerProps) {
   const [timeRemaining, setTimeRemaining] = useState(initialTime);
+  const onTimeUpRef = useRef(onTimeUp);
+
+  // Keep the callback ref up-to-date without restarting the timer
+  useEffect(() => {
+    onTimeUpRef.current = onTimeUp;
+  }, [onTimeUp]);
 
   // Reset timer when initialTime changes
   useEffect(() => {
     setTimeRemaining(initialTime);
   }, [initialTime]);
 
-  // Timer countdown
+  // Timer countdown — depends only on isActive to avoid recreation
   useEffect(() => {
-    if (!isActive || timeRemaining <= 0) return;
+    if (!isActive) return;
 
     const interval = setInterval(() => {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          onTimeUp();
+          onTimeUpRef.current();
           return 0;
         }
         return prev - 1;
@@ -30,7 +36,7 @@ export function useTimer({ initialTime, onTimeUp, isActive }: UseTimerProps) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isActive, timeRemaining, onTimeUp]);
+  }, [isActive]);
 
   const resetTimer = useCallback((newTime?: number) => {
     setTimeRemaining(newTime ?? initialTime);

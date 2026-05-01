@@ -184,7 +184,23 @@ export function parseCSVContent(csvContent: string): CSVParseResult {
     });
   }
 
-  return { questions, errors, totalRows: lines.length - 1 };
+  // Deduplicate questions by question text (case-insensitive)
+  const seenQuestions = new Set<string>();
+  const uniqueQuestions: QuizQuestion[] = [];
+  for (const question of questions) {
+    const normalizedText = question.question.trim().toLowerCase();
+    if (!seenQuestions.has(normalizedText)) {
+      seenQuestions.add(normalizedText);
+      uniqueQuestions.push({ ...question, id: uniqueQuestions.length + 1 });
+    }
+  }
+
+  const duplicateCount = questions.length - uniqueQuestions.length;
+  if (duplicateCount > 0) {
+    errors.push(`${duplicateCount} duplicate question(s) were removed.`);
+  }
+
+  return { questions: uniqueQuestions, errors, totalRows: lines.length - 1 };
 }
 
 interface ColumnMapping {

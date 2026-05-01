@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { QuizCategory, QuizAttempt, UserAnswer } from "@/types/quiz";
 import { quizCategories } from "@/data/quizData";
@@ -42,11 +42,20 @@ export function QuizHome() {
   const [customQuizzes, setCustomQuizzes] = useLocalStorage<QuizCategory[]>("custom-quizzes", []);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "in-progress" | "completed" | "new">("all");
+  const [quizKey, setQuizKey] = useState(0);
 
   const { progress, saveAttempt, getBestScore, getAttemptsForCategory } = useQuizProgress();
 
   // Combine default and custom quizzes
   const allCategories = [...quizCategories, ...customQuizzes];
+
+  // Stable recommended quiz — only recalculates when category list changes
+  const recommendedQuiz = useMemo(() => {
+    if (allCategories.length === 0) return undefined;
+    const poolSize = Math.min(allCategories.length, 4);
+    return allCategories[Math.floor(Math.random() * poolSize)];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allCategories.length]);
 
   // Filter categories
   const filteredCategories = allCategories.filter((cat) => {
@@ -99,6 +108,7 @@ export function QuizHome() {
   };
 
   const handleRetry = () => {
+    setQuizKey((prevKey) => prevKey + 1);
     setCurrentView("playing");
     setLastAttempt(null);
   };
@@ -149,6 +159,7 @@ export function QuizHome() {
   if (currentView === "playing" && selectedCategory) {
     return (
       <QuizPlayer
+        key={`quiz-${selectedCategory.id}-${quizKey}`}
         category={selectedCategory}
         onComplete={handleQuizComplete}
         onQuit={handleQuit}
@@ -211,7 +222,7 @@ export function QuizHome() {
             </div>
 
             {/* Quick Action */}
-            {progress.totalQuizzesCompleted === 0 && (
+            {progress.totalQuizzesCompleted === 0 && allCategories.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -242,7 +253,7 @@ export function QuizHome() {
             label="Quizzes Completed"
             showProgress
             ctaText="Start One"
-            onCtaClick={() => handleSelectCategory(allCategories[0])}
+            onCtaClick={allCategories.length > 0 ? () => handleSelectCategory(allCategories[0]) : undefined}
             delay={0}
           />
 
@@ -277,10 +288,10 @@ export function QuizHome() {
         </div>
 
         {/* Quick Start Section */}
-        {allCategories.length > 0 && (
+        {allCategories.length > 0 && recommendedQuiz && (
           <div className="mb-8">
             <QuickStartCard
-              recommendedQuiz={allCategories[Math.floor(Math.random() * Math.min(allCategories.length, 4))]}
+              recommendedQuiz={recommendedQuiz}
               onStart={handleSelectCategory}
             />
           </div>
@@ -425,12 +436,24 @@ export function QuizHome() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                {(() => {
+                  const sevenDaysAgo = new Date();
+                  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                  const weeklyAttempts = progress.attempts.filter(
+                    (a) => new Date(a.date) >= sevenDaysAgo
+                  );
+                  const weeklyTotalQuestions = weeklyAttempts.reduce((sum, a) => sum + a.totalQuestions, 0);
+                  const weeklyAccuracy = weeklyTotalQuestions > 0
+                    ? Math.round((weeklyAttempts.reduce((sum, a) => sum + a.score, 0) / weeklyTotalQuestions) * 100)
+                    : 0;
+
+                  return (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                   <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
                     <Medal className="h-8 w-8 text-warning" />
                     <div>
                       <p className="text-2xl font-bold text-foreground">
-                        {progress.attempts.slice(0, 7).length}
+                        {weeklyAttempts.length}
                       </p>
                       <p className="text-sm text-muted-foreground">Quizzes this week</p>
                     </div>
@@ -439,7 +462,7 @@ export function QuizHome() {
                     <Clock className="h-8 w-8 text-primary" />
                     <div>
                       <p className="text-2xl font-bold text-foreground">
-                        {Math.round(progress.attempts.slice(0, 7).reduce((sum, a) => sum + a.timeTaken, 0) / 60)}
+                        {Math.round(weeklyAttempts.reduce((sum, a) => sum + a.timeTaken, 0) / 60)}
                       </p>
                       <p className="text-sm text-muted-foreground">Minutes learning</p>
                     </div>
@@ -448,17 +471,14 @@ export function QuizHome() {
                     <Target className="h-8 w-8 text-success" />
                     <div>
                       <p className="text-2xl font-bold text-foreground">
-                        {progress.attempts.length > 0
-                          ? Math.round(
-                            (progress.attempts.slice(0, 7).reduce((sum, a) => sum + a.score, 0) /
-                              progress.attempts.slice(0, 7).reduce((sum, a) => sum + a.totalQuestions, 0)) * 100
-                          ) || 0
-                          : 0}%
+                        {weeklyAccuracy}%
                       </p>
                       <p className="text-sm text-muted-foreground">Average accuracy</p>
                     </div>
                   </div>
                 </div>
+                  );
+                })()}
 
                 {/* Recent Activity */}
                 <h4 className="font-semibold text-foreground mb-3">Recent Activity</h4>

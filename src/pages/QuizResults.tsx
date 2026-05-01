@@ -297,7 +297,7 @@ export function QuizResults({ category, attempt, onRetry, onGoHome }: QuizResult
             </CardHeader>
             <CardContent className="space-y-3">
               {category.questions.map((question, index) => {
-                const userAnswer = attempt.answers[index];
+                const userAnswer = attempt.answers.find((a) => a.questionId === question.id) ?? attempt.answers[index];
                 const isExpanded = expandedQuestions.has(question.id);
                 const isCorrect = userAnswer?.isCorrect;
 
